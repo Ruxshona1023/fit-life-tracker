@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitLife Pro - Sog'lom Turmush Tarzi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="animate-fade-down">
+            <div class="profile-section">
+                <div class="avatar">
+                    <img id="user-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User Profile">
+                </div>
+                <div class="user-info">
+                    <div class="date-nav">
+                        <button class="btn-date" onclick="changeDate(-1)" title="Oldingi kun"><i data-lucide="chevron-left"></i></button>
+                        <p id="display-date" onclick="goToToday()" style="cursor: pointer" title="Bugunga qaytish">Yuklanmoqda...</p>
+                        <button class="btn-date" onclick="changeDate(1)" title="Keyingi kun"><i data-lucide="chevron-right"></i></button>
+                    </div>
+                    <h2 id="username">Foydalanuvchi</h2>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="streak-badge" id="streak-container" title="Kunlik faollik">
+                    <span id="streak-count">0</span> <i data-lucide="flame"></i>
+                </div>
+                <div class="cloud-status" id="cloud-sync" title="Bulut bilan sinxronizatsiya">
+                    <i data-lucide="cloud-upload"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main>
+            <!-- Progress Section -->
+            <section class="main-progress animate-pop-in">
+                <div class="circular-chart">
+                    <svg viewBox="0 0 36 36" class="circular-svg">
+                        <path class="progress-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path id="progress-path" class="progress-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="progress-text">
+                        <h1 id="current-steps">0</h1>
+                        <p>qadam / <span id="goal-steps">10000</span></p>
+                    </div>
+                </div>
+                <div class="tracking-controls">
+                    <button id="btn-track" class="btn-track" onclick="toggleTracking()">
+                        <i data-lucide="play"></i> Avto-hisoblash
+                    </button>
+                    <div id="tracking-status" class="tracking-status">
+                        <span></span> O'chirilgan
+                    </div>
+                </div>
+                <p id="goal-status">Bugungi maqsadga yetishingizga oz qoldi!</p>
+            </section>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid animate-slide-up">
+                <div class="stat-card">
+                    <div class="stat-icon steps">
+                        <i data-lucide="footprints"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-dist">0.0</h3>
+                        <p>Yurish (km)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon running">
+                        <i data-lucide="zap"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-run">0</h3>
+                        <p>Yugurish (qadam)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon calories">
+                        <i data-lucide="flame"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-kcal">0</h3>
+                        <p>Kaloriya</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon water">
+                        <i data-lucide="droplet"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-water">0</h3>
+                        <p>Suv (stakan)</p>
+                        <div class="water-controls">
+                            <button class="btn-mini" onclick="updateWater(-1)">-</button>
+                            <button class="btn-mini" onclick="updateWater(1)">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon sleep">
+                        <i data-lucide="moon"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-sleep">0</h3>
+                        <p>Uyqu (soat)</p>
+                        <div class="water-controls">
+                            <button class="btn-mini" onclick="updateSleep(-1)">-</button>
+                            <button class="btn-mini" onclick="updateSleep(1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Insights -->
+            <section class="insights-grid animate-slide-up">
+                <div class="insight-card bmi-card">
+                    <h4><i data-lucide="scale"></i> BMI Kalkulyatori</h4>
+                    <div class="bmi-form">
+                        <input type="number" id="bmi-weight" placeholder="Vazn (kg)">
+                        <input type="number" id="bmi-height" placeholder="Bo'y (cm)">
+                        <button class="btn-primary" onclick="calculateBMI()">Hisoblash</button>
+                    </div>
+                    <div id="bmi-result" class="bmi-result">--</div>
+                </div>
+                <div class="insight-card hr-card">
+                    <h4><i data-lucide="heart"></i> Yurak urishi</h4>
+                    <div class="hr-display">
+                        <span id="stat-hr">--</span> <small>bpm</small>
+                    </div>
+                    <input type="range" id="input-hr" min="40" max="180" value="75" oninput="updateHeartRate(this.value)">
+                </div>
+            </section>
+
+            <!-- Chart Section -->
+            <section class="chart-container animate-slide-up">
+                <div class="chart-header">
+                    <h4>Haftalik faollik</h4>
+                    <i data-lucide="bar-chart-3" style="color: var(--text-muted); width: 18px;"></i>
+                </div>
+                <canvas id="activityChart"></canvas>
+            </section>
+
+            <!-- Nutrition Section -->
+            <section class="nutrition-section animate-slide-up">
+                <h4><i data-lucide="utensils"></i> Ovqatlanish kundaligi</h4>
+                <div class="nutrition-form">
+                    <input type="text" id="food-name" placeholder="Ovqat nomi">
+                    <div class="input-inline">
+                        <input type="number" id="food-kcal" placeholder="Kaloriya">
+                        <button class="btn-mini" onclick="addFood()">Qo'shish</button>
+                    </div>
+                </div>
+                <div class="food-list" id="food-list">
+                    <p class="empty-msg">Hali ovqatlar qo'shilmadi</p>
+                </div>
+            </section>
+
+            <!-- Workout Log Section -->
+            <section class="workout-section animate-slide-up">
+                <h4><i data-lucide="dumbbell"></i> Mashg'ulotlar</h4>
+                <div class="workout-form">
+                    <select id="select-exercise">
+                        <option value="none">Mashq turi</option>
+                        <option value="running">Yugurish</option>
+                        <option value="cycling">Velosiped</option>
+                        <option value="swimming">Suzish</option>
+                        <option value="weights">Zal (Gym)</option>
+                        <option value="yoga">Yoga</option>
+                    </select>
+                    <div class="input-inline">
+                        <input type="number" id="input-duration" placeholder="Daqiqa">
+                        <button class="btn-mini" onclick="addWorkout()">Qo'shish</button>
+                    </div>
+                </div>
+                <div class="workout-list" id="workout-list">
+                    <p class="empty-msg">Hali mashqlar yo'q</p>
+                </div>
+            </section>
+
+            <!-- Global Actions -->
+            <section class="input-section animate-slide-up">
+                <div class="input-group">
+                    <input type="number" id="input-steps" placeholder="Bugungi qadamlarni kiriting">
+                </div>
+                <button class="btn-add" onclick="addActivity()">
+                    <i data-lucide="plus"></i> Saqlash
+                </button>
+            </section>
+
+            <!-- Settings -->
+            <section class="settings-section animate-slide-up">
+                <h4><i data-lucide="settings"></i> Sozlamalar</h4>
+                <div class="settings-grid">
+                    <input type="text" id="input-fname" placeholder="Ism">
+                    <input type="text" id="input-lname" placeholder="Familiya">
+                    <div class="avatar-upload">
+                        <label for="input-avatar">Rasm tanlang</label>
+                        <input type="file" id="input-avatar" accept="image/*">
+                    </div>
+                    <button class="btn-primary" onclick="updateProfile()">Profilni yangilash</button>
+                </div>
+                <div class="input-inline" style="margin-top: 1rem;">
+                    <input type="number" id="input-goal" placeholder="Kunlik maqsad">
+                    <button class="btn-mini" onclick="updateGoal()">Yangilash</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

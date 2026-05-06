@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitLife Tracker - Sog'lom Turmush Tarzi</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="profile-section">
+                <div class="avatar">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User Profile">
+                </div>
+                <div class="user-info">
+                    <p>Xayrli kun,</p>
+                    <h2 id="username">Foydalanuvchi</h2>
+                </div>
+            </div>
+            <div class="cloud-status" id="cloud-sync" title="Bulut bilan sinxronizatsiya">
+                <i data-lucide="cloud-upload"></i>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main>
+            <section class="main-progress">
+                <div class="circular-chart">
+                    <svg viewBox="0 0 36 36" class="circular-svg">
+                        <path class="progress-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path id="progress-path" class="progress-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="progress-text">
+                        <h1 id="current-steps">0</h1>
+                        <p>qadam / <span id="goal-steps">10000</span></p>
+                    </div>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--text-muted);">Bugungi maqsadga yetishingizga oz qoldi!</p>
+            </section>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon steps">
+                        <i data-lucide="footprints"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-dist">0.0</h3>
+                        <p>Kilometr (km)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon calories">
+                        <i data-lucide="flame"></i>
+                    </div>
+                    <div class="stat-value">
+                        <h3 id="stat-kcal">0</h3>
+                        <p>Kaloriya (kcal)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <section class="chart-container">
+                <div class="chart-header">
+                    <h4>Haftalik faollik</h4>
+                    <i data-lucide="bar-chart-3" style="color: var(--text-muted); width: 18px;"></i>
+                </div>
+                <canvas id="activityChart"></canvas>
+            </section>
+
+            <!-- Add Data Form -->
+            <section class="input-section">
+                <div class="input-group">
+                    <input type="number" id="input-steps" placeholder="Bugungi qadamlar sonini kiriting">
+                </div>
+                <button class="btn-add" onclick="addActivity()">
+                    <i data-lucide="plus" style="vertical-align: middle; margin-right: 8px;"></i>
+                    Ma'lumotni saqlash
+                </button>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

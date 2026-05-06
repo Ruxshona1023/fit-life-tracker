@@ -1,124 +1,130 @@
-from flask import Flask, render_template, url_for, flash, redirect, request, send_from_directory
-from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, login_user, current_user, logout_user, login_required
-from models import db, User, FitnessLog
-from datetime import datetime
+import flask
+import sqlite3
+import pyodbc
+import json
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+# Loyihaning asosiy papkasini aniqlash
+basedir = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(basedir, 'database.db')
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_123')
-# SQLite ishlatamiz (mahalliy ishlab chiqish uchun), Bulutda PostgreSQL ga o'zgartiriladi
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fitness.db'
+# --- AZURE SQL SOZLAMALARI ---
+AZURE_CONFIG = {
+    'server': 'demo-azure-2-testing.database.windows.net',
+    'database': 'demoDB4Azure',
+    'username': 'azure-admin1',
+    'password': 'ruxshona-123',
+    'driver': '{ODBC Driver 18 for SQL Server}'
+}
 
-db.init_app(app)
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+def get_db_connection():
+    """Baza bilan ulanishni yaratadi (Azure yoki Lokal)"""
+    try:
+        conn_str = (
+            f"DRIVER={AZURE_CONFIG['driver']};"
+            f"SERVER={AZURE_CONFIG['server']};"
+            f"DATABASE={AZURE_CONFIG['database']};"
+            f"UID={AZURE_CONFIG['username']};"
+            f"PWD={AZURE_CONFIG['password']};"
+            "Connection Timeout=30;"
+            "TrustServerCertificate=yes;"
+        )
+        conn = pyodbc.connect(conn_str)
+        conn.autocommit = True
+        return conn
+    except Exception as e:
+        print(f"Azure SQL-ga ulanishda xato: {e}")
+        print("Lokal SQLite bazasidan foydalanilmoqda...")
+        return sqlite3.connect(DB_PATH)
 
-# --- ROUTES ---
 
-@app.route("/")
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    # Bugungi ma'lumotlarni olish
-    today = datetime.utcnow().date()
-    log = FitnessLog.query.filter_by(user_id=current_user.id, date=today).first()
-    
-    # Oxirgi 7 kunlik ma'lumotlar (Grafik uchun)
-    history = FitnessLog.query.filter_by(user_id=current_user.id).order_by(FitnessLog.date.desc()).limit(7).all()
-    history.reverse() # Xronologik tartib uchun
-    
-    # BMI hisoblash
-    bmi = 0
-    bmi_category = ""
-    if current_user.height > 0:
-        bmi = round(current_user.weight / ((current_user.height/100)**2), 1)
-        if bmi < 18.5: bmi_category = "Vazn yetishmaydi"
-        elif 18.5 <= bmi < 25: bmi_category = "Normal"
-        elif 25 <= bmi < 30: bmi_category = "Ortiqcha vazn"
-        else: bmi_category = "Semizlik"
+def init_db():
+    conn = get_db_connection()
+    c = conn.cursor()
 
-    return render_template('dashboard.html', log=log, history=history, bmi=bmi, bmi_category=bmi_category)
+    # Jadvalni yaratish
+    try:
+        # SQLite uchun
+        c.execute('''CREATE TABLE IF NOT EXISTS fitness_data
+                     (
+                         id
+                         INTEGER
+                         PRIMARY
+                         KEY,
+                         content
+                         TEXT
+                     )''')
+    except:
+        # Azure SQL uchun
+        try:
+            c.execute('''
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='fitness_data' AND xtype='U')
+                CREATE TABLE fitness_data (id INT PRIMARY KEY, content NVARCHAR(MAX))
+            ''')
+        except Exception as err:
+            print(f"Jadval yaratishda xato: {err}")
 
-@app.route("/update_profile", methods=['POST'])
-@login_required
-def update_profile():
-    current_user.weight = float(request.form.get('weight', 0))
-    current_user.height = float(request.form.get('height', 0))
-    
-    if 'profile_image' in request.files:
-        file = request.files['profile_image']
-        if file.filename != '':
-            filename = f"user_{current_user.id}_{file.filename}"
-            file.save(os.path.join('static/img', filename))
-            current_user.profile_image = filename
-            
-    db.session.commit()
-    flash('Profil ma\'lumotlari yangilandi!', 'success')
-    return redirect(url_for('dashboard'))
+    # Boshlang'ich ma'lumot
+    try:
+        c.execute('SELECT content FROM fitness_data WHERE id=1')
+        if not c.fetchone():
+            initial_data = {
+                "user": {"firstName": "Foydalanuvchi", "lastName": "", "avatar": None},
+                "goalSteps": 10000, "streak": 0, "lastActiveDate": None, "dailyLogs": {}
+            }
+            c.execute('INSERT INTO fitness_data (id, content) VALUES (1, ?)', (json.dumps(initial_data),))
 
-@app.route("/register", methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    if request.method == 'POST':
-        hashed_password = bcrypt.generate_password_hash(request.form.get('password')).decode('utf-8')
-        user = User(username=request.form.get('username'), email=request.form.get('email'), password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        flash('Hisobingiz muvaffaqiyatli yaratildi!', 'success')
-        return redirect(url_for('login'))
-    return render_template('register.html')
+        if hasattr(conn, 'commit'):
+            conn.commit()
+    except Exception as e:
+        print(f"Ma'lumotlarni tekshirishda xato: {e}")
 
-@app.route("/login", methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    if request.method == 'POST':
-        user = User.query.filter_by(email=request.form.get('email')).first()
-        if user and bcrypt.check_password_hash(user.password, request.form.get('password')):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Xatolik! Email yoki parol noto\'g\'ri.', 'danger')
-    return render_template('login.html')
+    conn.close()
 
-@app.route("/add_data", methods=['POST'])
-@login_required
-def add_data():
-    today = datetime.utcnow().date()
-    log = FitnessLog.query.filter_by(user_id=current_user.id, date=today).first()
-    
-    steps = int(request.form.get('steps', 0))
-    calories_burned = int(request.form.get('calories_burned', 0))
-    calories_consumed = int(request.form.get('calories_consumed', 0))
 
-    if not log:
-        log = FitnessLog(date=today, steps=steps, calories_burned=calories_burned, 
-                         calories_consumed=calories_consumed, user_id=current_user.id)
-        db.session.add(log)
-    else:
-        log.steps += steps
-        log.calories_burned += calories_burned
-        log.calories_consumed += calories_consumed
-    
-    db.session.commit()
-    return redirect(url_for('dashboard'))
+app = flask.Flask(__name__,
+                  template_folder=os.path.join(basedir, 'templates'),
+                  static_folder=os.path.join(basedir, 'static'))
 
-@app.route("/logout")
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
+
+@app.route('/')
+def index():
+    return flask.render_template('index.html')
+
+
+@app.route('/api/get_data', methods=['GET'])
+def get_data():
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('SELECT content FROM fitness_data WHERE id=1')
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return flask.jsonify(json.loads(row[0]))
+        return flask.jsonify({"error": "No data found"}), 404
+    except Exception as e:
+        return flask.jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/save_data', methods=['POST'])
+def save_data():
+    try:
+        data = flask.request.json
+        conn = get_db_connection()
+        c = conn.cursor()
+        # SQL Server va SQLite uchun har xil bo'lishi mumkin bo'lgan UPDATE so'rovi
+        c.execute('UPDATE fitness_data SET content = ? WHERE id = 1', (json.dumps(data),))
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        return flask.jsonify({"status": "success", "message": "Ma'lumotlar saqlandi"})
+    except Exception as e:
+        return flask.jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all() # MB jadvallarini yaratish
-    app.run(debug=True)
+    init_db()
+    print("Server ishga tushmoqda: http://127.0.0.1:5000")
+    app.run(debug=True, port=5000)

@@ -67,15 +67,20 @@ function getLog(date) {
 }
 
 // Initialize App
-function init() {
-    loadData();
-    checkStreak();
-    updateUI();
-    initChart();
+async function init() {
     setupDateNavigation();
-    
-    // Check for day change every minute
-    setInterval(checkDayChange, 60000);
+    const success = await loadData();
+    if (success) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        checkStreak();
+        updateUI();
+        initChart();
+        setInterval(checkDayChange, 60000);
+    } else {
+        document.getElementById('auth-container').style.display = 'flex';
+        document.getElementById('app-container').style.display = 'none';
+    }
 }
 
 function checkDayChange() {
@@ -92,17 +97,31 @@ function checkDayChange() {
     }
 }
 
-function loadData() {
-    const saved = localStorage.getItem('fitLifeProData');
-    if (saved) {
-        const parsed = JSON.parse(saved);
-        fitnessData = { ...fitnessData, ...parsed };
+async function loadData() {
+    try {
+        const res = await fetch('/api/get_data');
+        if (res.ok) {
+            const parsed = await res.json();
+            fitnessData = { ...fitnessData, ...parsed };
+            return true;
+        }
+    } catch(e) {
+        console.error("Ma'lumotlarni yuklashda xato:", e);
     }
+    return false;
 }
 
-function saveData() {
-    localStorage.setItem('fitLifeProData', JSON.stringify(fitnessData));
+async function saveData() {
     cloudSyncBtn.classList.add('syncing');
+    try {
+        await fetch('/api/save_data', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(fitnessData)
+        });
+    } catch(e) {
+        console.error("Saqlashda xato:", e);
+    }
     setTimeout(() => cloudSyncBtn.classList.remove('syncing'), 1500);
     updateChartData();
 }
@@ -555,6 +574,60 @@ function updateChartData() {
         activityChart.data.datasets[0].data = getHistoryData();
         activityChart.update();
     }
+}
+
+// --- AUTH LOGIC ---
+function switchAuthTab(tab) {
+    document.getElementById('tab-login').classList.remove('active');
+    document.getElementById('tab-register').classList.remove('active');
+    document.getElementById('form-login').classList.remove('active');
+    document.getElementById('form-register').classList.remove('active');
+    
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('form-' + tab).classList.add('active');
+}
+
+async function doLogin() {
+    const u = document.getElementById('login-user').value;
+    const p = document.getElementById('login-pass').value;
+    const err = document.getElementById('login-error');
+    if(!u || !p) return err.innerText = "Barcha maydonlarni to'ldiring";
+    
+    err.innerText = "Yuklanmoqda...";
+    const res = await fetch('/api/login', {
+        method: 'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: u, password: p})
+    });
+    if(res.ok) {
+        location.reload();
+    } else {
+        const data = await res.json();
+        err.innerText = data.error || "Login yoki parol xato";
+    }
+}
+
+async function doRegister() {
+    const u = document.getElementById('reg-user').value;
+    const p = document.getElementById('reg-pass').value;
+    const err = document.getElementById('reg-error');
+    if(!u || !p) return err.innerText = "Barcha maydonlarni to'ldiring";
+    
+    err.innerText = "Yuklanmoqda...";
+    const res = await fetch('/api/register', {
+        method: 'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: u, password: p})
+    });
+    if(res.ok) {
+        location.reload();
+    } else {
+        const data = await res.json();
+        err.innerText = data.error || "Xatolik yuz berdi";
+    }
+}
+
+async function doLogout() {
+    await fetch('/api/logout', {method: 'POST'});
+    location.reload();
 }
 
 window.onload = init;

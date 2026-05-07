@@ -11,7 +11,34 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="app-container">
+    <!-- Auth Container -->
+    <div id="auth-container" class="auth-container">
+        <div class="auth-card animate-pop-in">
+            <h2><i data-lucide="activity"></i> FitLife Pro</h2>
+            <p id="auth-subtitle">Tizimga kiring yoki ro'yxatdan o'ting</p>
+            
+            <div class="auth-tabs">
+                <button id="tab-login" class="active" onclick="switchAuthTab('login')">Kirish</button>
+                <button id="tab-register" onclick="switchAuthTab('register')">Ro'yxatdan o'tish</button>
+            </div>
+            
+            <div id="form-login" class="auth-form active">
+                <input type="text" id="login-user" placeholder="Foydalanuvchi nomi">
+                <input type="password" id="login-pass" placeholder="Parol">
+                <button class="btn-primary" onclick="doLogin()">Kirish</button>
+                <p class="auth-error" id="login-error"></p>
+            </div>
+            
+            <div id="form-register" class="auth-form" style="display: none;">
+                <input type="text" id="reg-user" placeholder="Foydalanuvchi nomi">
+                <input type="password" id="reg-pass" placeholder="Parol">
+                <button class="btn-primary" onclick="doRegister()">Ro'yxatdan o'tish</button>
+                <p class="auth-error" id="reg-error"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display: none;">
         <!-- Header -->
         <header class="animate-fade-down">
             <div class="profile-section">
@@ -33,6 +60,9 @@
                 </div>
                 <div class="cloud-status" id="cloud-sync" title="Bulut bilan sinxronizatsiya">
                     <i data-lucide="cloud-upload"></i>
+                </div>
+                <div class="cloud-status" style="margin-left: 10px; cursor: pointer; color: #f43f5e;" onclick="doLogout()" title="Chiqish">
+                    <i data-lucide="log-out"></i>
                 </div>
             </div>
         </header>

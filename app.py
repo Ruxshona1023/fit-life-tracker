@@ -69,6 +69,33 @@ def init_db():
         except Exception as err:
             print(f"Jadval yaratishda xato: {err}")
 
+    # Dummy foydalanuvchilarni qo'shish
+    try:
+        dummy_users = [
+            ("Ali", "ali123"),
+            ("Vali", "vali123"),
+            ("Aziza", "aziza123"),
+            ("Ruxshona_Admin", "admin2026")
+        ]
+        for uname, pwd in dummy_users:
+            c.execute('SELECT id FROM users WHERE username=?', (uname,))
+            if not c.fetchone():
+                hashed_pw = generate_password_hash(pwd)
+                c.execute('INSERT INTO users (username, password) VALUES (?, ?)', (uname, hashed_pw))
+                if hasattr(c, 'lastrowid') and c.lastrowid:
+                    uid = c.lastrowid
+                else:
+                    c.execute('SELECT id FROM users WHERE username=?', (uname,))
+                    uid = c.fetchone()[0]
+                
+                init_data = {
+                    "user": {"firstName": uname, "lastName": "", "avatar": None},
+                    "goalSteps": 10000, "streak": 0, "lastActiveDate": None, "dailyLogs": {}, "history": [0]*7
+                }
+                c.execute('INSERT INTO fitness_data (user_id, content) VALUES (?, ?)', (uid, json.dumps(init_data)))
+    except Exception as e:
+        print("Seed user error:", e)
+
     if hasattr(conn, 'commit'):
         conn.commit()
     conn.close()

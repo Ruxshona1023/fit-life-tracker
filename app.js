@@ -447,16 +447,33 @@ function renderWorkouts() {
 }
 
 function updateProfile() {
-    const f = document.getElementById('input-fname').value;
-    const l = document.getElementById('input-lname').value;
+    const fInput = document.getElementById('input-fname');
+    const lInput = document.getElementById('input-lname');
+    const f = fInput.value;
+    const l = lInput.value;
     const avatar = document.getElementById('input-avatar').files[0];
+    
     if (f) fitnessData.user.firstName = f;
     if (l) fitnessData.user.lastName = l;
+    
     if (avatar) {
         const reader = new FileReader();
-        reader.onload = (e) => { fitnessData.user.avatar = e.target.result; updateUI(); saveData(); };
+        reader.onload = (e) => { 
+            fitnessData.user.avatar = e.target.result; 
+            updateUI(); 
+            saveData();
+            fInput.value = '';
+            lInput.value = '';
+            alert("Profil muvaffaqiyatli yangilandi!");
+        };
         reader.readAsDataURL(avatar);
-    } else { updateUI(); saveData(); }
+    } else { 
+        updateUI(); 
+        saveData();
+        fInput.value = '';
+        lInput.value = '';
+        alert("Profil muvaffaqiyatli yangilandi!");
+    }
 }
 
 function updateGoal() {
